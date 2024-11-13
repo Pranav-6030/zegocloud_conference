@@ -21,7 +21,7 @@ class VideoCall extends StatefulWidget {
   State<VideoCall> createState() => _VideoCallState();
 }
 
-class _VideoCallState extends State<VideoCall> {
+class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
   bool isMuted = true;
   bool hasUnmutePermission = false;
   bool isHandRaised = false;
@@ -32,20 +32,32 @@ class _VideoCallState extends State<VideoCall> {
   @override
   void initState() {
     super.initState();
-    // Start the call muted
+    WidgetsBinding.instance.addObserver(this); // Observe app lifecycle changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      toggleMute(true);
+      toggleMute(true); // Start the call muted
     });
   }
 
-void toggleMute(bool mute) {
-  ZegoUIKit().turnMicrophoneOn(!mute); // true to unmute, false to mute
-  setState(() {
-    isMuted = mute;
-  });
-}
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // Leave the call when the app is minimized or goes to the background
+      leaveCall();
+    }
+  }
 
+  void leaveCall() {
+    ZegoUIKit().leaveRoom(); // Leave the ZEGOCLOUD video call room
+    Navigator.of(context).pop(); // Optionally, close the video call screen
+  }
 
+  void toggleMute(bool mute) {
+    ZegoUIKit().turnMicrophoneOn(!mute); // true to unmute, false to mute
+    setState(() {
+      isMuted = mute;
+    });
+  }
 
   void toggleHandRaise() {
     setState(() {
@@ -67,23 +79,22 @@ void toggleMute(bool mute) {
     });
 
     if (hasUnmutePermission) {
-      // Start the countdown at 30 seconds
-      countdown = 30;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You have permission to unmute")),
+      );
 
-      // Start a periodic timer to update countdown every second
+      countdown = 30;
       countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         setState(() {
           countdown--;
         });
 
         if (countdown <= 0) {
-          // Revoke permission and stop the timer
           revokePermission();
           countdownTimer?.cancel();
         }
       });
     } else {
-      // Manually revoke permission and stop the timer
       revokePermission();
     }
 
@@ -93,7 +104,7 @@ void toggleMute(bool mute) {
   void revokePermission() {
     setState(() {
       hasUnmutePermission = false;
-      countdown = 0; // Reset countdown to hide it
+      countdown = 0;
     });
 
     if (!isMuted) {
@@ -101,7 +112,7 @@ void toggleMute(bool mute) {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Permission revoked, mic muted")),
+      const SnackBar(content: Text("Your permission has been revoked, mic muted")),
     );
 
     print("Permission revoked, mic muted");
@@ -110,6 +121,7 @@ void toggleMute(bool mute) {
   @override
   void dispose() {
     countdownTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this); // Stop observing lifecycle
     super.dispose();
   }
 
