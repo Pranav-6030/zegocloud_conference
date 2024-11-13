@@ -22,7 +22,7 @@ class VideoCall extends StatefulWidget {
 }
 
 class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
-  bool isMuted = true;
+  bool isMuted = true; // Start muted
   bool hasUnmutePermission = false;
   bool isHandRaised = false;
   bool isLiked = false;
@@ -33,30 +33,40 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this); // Observe app lifecycle changes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      toggleMute(true); // Start the call muted
-    });
+
+    // Ensure the microphone starts off and state sync with isMuted
+    ZegoUIKit().turnMicrophoneOn(false);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      // Leave the call when the app is minimized or goes to the background
       leaveCall();
     }
   }
 
   void leaveCall() {
     ZegoUIKit().leaveRoom(); // Leave the ZEGOCLOUD video call room
-    Navigator.of(context).pop(); // Optionally, close the video call screen
+    Navigator.of(context).pop();
   }
 
-  void toggleMute(bool mute) {
-    ZegoUIKit().turnMicrophoneOn(!mute); // true to unmute, false to mute
+  void toggleMute() {
+    // Check if permission is granted to unmute
+    if (!hasUnmutePermission && isMuted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You don't have permission to unmute")),
+      );
+      return;
+    }
+
+    // Toggle the mute status in SDK and update the state
+    ZegoUIKit().turnMicrophoneOn(isMuted); // Sync with SDK
     setState(() {
-      isMuted = mute;
+      isMuted = !isMuted;
     });
+
+    print("Mute Toggled: $isMuted");
   }
 
   void toggleHandRaise() {
@@ -105,11 +115,11 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
     setState(() {
       hasUnmutePermission = false;
       countdown = 0;
+      isMuted = true; // Update the icon state to reflect muted status
     });
 
-    if (!isMuted) {
-      toggleMute(true);
-    }
+    // Automatically mute the microphone
+    ZegoUIKit().turnMicrophoneOn(false);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Your permission has been revoked, mic muted")),
@@ -137,8 +147,27 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
               userID: widget.userID,
               userName: widget.userName,
               conferenceID: widget.conferenceID,
-              config: ZegoUIKitPrebuiltVideoConferenceConfig()
-                ..avatarBuilder = (BuildContext context, Size size, ZegoUIKitUser? user, Map extraInfo) {
+              config: ZegoUIKitPrebuiltVideoConferenceConfig(
+                turnOnMicrophoneWhenJoining: false,
+                bottomMenuBarConfig: ZegoBottomMenuBarConfig(
+                  extendButtons: [
+                    FloatingActionButton(
+                      onPressed: toggleMute,
+                      backgroundColor: Colors.red,
+                      child: Icon(
+                        isMuted ? Icons.mic_off : Icons.mic,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                  buttons: [
+                    ZegoMenuBarButtonName.toggleCameraButton,
+                    ZegoMenuBarButtonName.switchAudioOutputButton,
+                    ZegoMenuBarButtonName.leaveButton,
+                    ZegoMenuBarButtonName.switchCameraButton,
+                  ],
+                ),
+              )..avatarBuilder = (BuildContext context, Size size, ZegoUIKitUser? user, Map extraInfo) {
                   return user != null
                       ? Container(
                           width: size.width,
@@ -190,13 +219,20 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            if (hasUnmutePermission)
+            if (hasUnmutePermission && countdown > 0) // Show countdown
               Positioned(
                 bottom: 350,
-                left: 20,
-                child: Text(
-                  "Time left: $countdown s",
-                  style: const TextStyle(fontSize: 18, color: Colors.red),
+                left: 15,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    "Permission ends in $countdown s",
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
           ],
