@@ -111,7 +111,12 @@ class _NewMeetingState extends State<NewMeeting> {
               padding: const EdgeInsets.fromLTRB(10, 0, 0, 0),
               child: OutlinedButton.icon(
                 onPressed: () {
-                  // Get.to(VideoCall(channelName: _meetingCode.trim(),countTimer: int.tryParse(_controller.text.trim()) ));
+                  Get.to(VideoCall(
+                    conferenceID: _meetingCode.trim(),
+                    userID: const Uuid().v4(),         // Replace with the actual user ID
+                    userName: 'Panama',          // user name from pocketbase
+                    profilePictureUrl: 'https://www.example.com/profile_picture.jpg',
+                    countdown: int.tryParse(_controller.text.trim())?? 30 ));
                 },
                 icon: const Icon(
                   Icons.video_call,

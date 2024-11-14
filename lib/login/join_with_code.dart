@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:main_model/login/video_call.dart';
+import 'package:uuid/uuid.dart';
+
 
 class Joinwithcode extends StatelessWidget {
   Joinwithcode({super.key});
@@ -53,7 +55,13 @@ class Joinwithcode extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(10,0, 0, 0),
             child: ElevatedButton(
               onPressed: (){
-                // Get.to(VideoCall(channelName: _controller.text.trim()));
+                Get.to(VideoCall(
+                  conferenceID: _controller.text.trim(),
+                  userID: const Uuid().v4(),         // Replace with the actual user ID
+                  userName: 'Panama',          // user name from pocketbase
+                  profilePictureUrl: 'https://www.example.com/profile_picture.jpg',
+                  countdown: 40,//gett it from pocketbase by referencing the channel name
+                ));
               }, 
               // ignore: sort_child_properties_last, prefer_const_constructors
               child: Text("Join",style: TextStyle(color: Colors.white,),

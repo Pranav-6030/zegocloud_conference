@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:zego_uikit/zego_uikit.dart';
 import 'package:zego_uikit_prebuilt_video_conference/zego_uikit_prebuilt_video_conference.dart';
 
 class VideoCall extends StatefulWidget {
@@ -8,6 +7,7 @@ class VideoCall extends StatefulWidget {
   final String userID;
   final String userName;
   final String profilePictureUrl;
+  final int countdown;
 
   const VideoCall({
     Key? key,
@@ -15,6 +15,7 @@ class VideoCall extends StatefulWidget {
     required this.userID,
     required this.userName,
     this.profilePictureUrl = "https://www.mockofun.com/wp-content/uploads/2019/12/circle-image.jpg",
+    required this.countdown,
   }) : super(key: key);
 
   @override
@@ -93,7 +94,7 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
         const SnackBar(content: Text("You have permission to unmute")),
       );
 
-      countdown = 30;
+      countdown = widget.countdown;// set value of the counter from pocekbase or from passed on value
       countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         setState(() {
           countdown--;
@@ -148,6 +149,7 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
               userName: widget.userName,
               conferenceID: widget.conferenceID,
               config: ZegoUIKitPrebuiltVideoConferenceConfig(
+                
                 turnOnMicrophoneWhenJoining: false,
                 bottomMenuBarConfig: ZegoBottomMenuBarConfig(
                   extendButtons: [
@@ -184,7 +186,7 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
                 },
             ),
             Positioned(
-              bottom: 100,
+              bottom: 130,
               right: 15,
               child: FloatingActionButton.small(
                 onPressed: toggleHandRaise,
@@ -196,7 +198,7 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
               ),
             ),
             Positioned(
-              bottom: 100,
+              bottom: 130,
               left: 15,
               child: FloatingActionButton.small(
                 onPressed: toggleLike,
