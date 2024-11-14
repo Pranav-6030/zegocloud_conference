@@ -100,44 +100,43 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
   }
 
   // Update the unmute permission in Pocketbase
-void toggleUnmutePermission() async {
-  setState(() {
-    hasUnmutePermission = !hasUnmutePermission;
-  });
+  void toggleUnmutePermission() async {
+    setState(() {
+      hasUnmutePermission = !hasUnmutePermission;
+    });
 
-  // Send the update to Pocketbase (creating/updating the UserPermissions record)
-  final data = <String, dynamic>{
-    'userID': widget.userID,
-    'hasUnmutePermission': hasUnmutePermission,
-    'timestamp': DateTime.now().toUtc().toIso8601String(),
-  };
+    // Send the update to Pocketbase (creating/updating the UserPermissions record)
+    final data = <String, dynamic>{
+      'userID': widget.userID,
+      'hasUnmutePermission': hasUnmutePermission,
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
+    };
 
-  // try {
-    // Use upsert to avoid failure if the record already exists
-    final record = await pb.collection('pranavUserPermissions').create(body: data );
+    try {
+      // Use upsert to avoid failure if the record already exists
+      final record = await pb.collection('pranavUserPermissions').create(body: data);
 
-    // If permission is granted, start the countdown
-    if (hasUnmutePermission) {
-      countdown = widget.countdown;
-      countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        setState(() {
-          countdown--;
+      // If permission is granted, start the countdown
+      if (hasUnmutePermission) {
+        countdown = widget.countdown;
+        countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          setState(() {
+            countdown--;
+          });
+          if (countdown <= 0) {
+            revokePermission();
+            countdownTimer?.cancel();
+          }
         });
-        if (countdown <= 0) {
-          revokePermission();
-          countdownTimer?.cancel();
-        }
-      });
-    } else {
-      revokePermission();
+      } else {
+        revokePermission();
+      }
+
+      print('Unmute permission updated for user: ${widget.userID}');
+    } catch (e) {
+      print('Error updating unmute permission: $e');
     }
-
-    print('Unmute permission updated for user: ${widget.userID}');
-  // } catch (e) {
-  //   print('Error updating unmute permission: $e');
-  // }
-}
-
+  }
 
   // Revoke unmute permission
   void revokePermission() {
@@ -192,23 +191,19 @@ void toggleUnmutePermission() async {
                     ZegoMenuBarButtonName.switchCameraButton,
                   ],
                 ),
-              )..avatarBuilder = (BuildContext context, Size size, ZegoUIKitUser? user, Map extraInfo) {
-                  bool isHighlighted = user?.id == highlightedUserID;
-                  return user != null
-                      ? Container(
-                          width: size.width,
-                          height: size.height,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: isHighlighted ? Border.all(color: Colors.yellow, width: 3) : null,
-                            image: DecorationImage(
-                              fit: BoxFit.cover,
-                              image: NetworkImage(widget.profilePictureUrl),
-                            ),
-                          ),
-                        )
-                      : const SizedBox();
-                },
+              )..layout = hasUnmutePermission
+                  ? ZegoLayout.pictureInPicture(
+                      smallViewPosition: ZegoViewPosition.topRight, // Position small views (other users)
+                      smallViewMargin: EdgeInsets.all(8), // Margin between the small views
+                      isSmallViewDraggable: true, // Make the small view draggable
+                      visibleSmallViewsCount: 3, // Limit the number of visible small views
+                    )
+                  : ZegoLayout.gallery(
+                      showOnlyOnAudioVideo: true, // Show users only if they have video or audio
+                      showNewScreenSharingViewInFullscreenMode: true,
+                      addBorderRadiusAndSpacingBetweenView: true,
+                      margin: EdgeInsets.all(4), // Margin between users in the grid
+                    ),
             ),
             Positioned(
               bottom: 130,
