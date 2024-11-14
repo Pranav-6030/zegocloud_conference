@@ -87,7 +87,7 @@ class GDinterface extends StatelessWidget {
                                 conferenceID: 'test',  // Replace with the actual conference ID
                                 userID: const Uuid().v4(),         // Replace with the actual user ID
                                 userName: 'Panama',          // user name from pocketbase
-                                profilePictureUrl: 'https://www.example.com/profile_picture.jpg',
+                                profilePictureUrl: 'https://www.mockofun.com/wp-content/uploads/2019/12/circle-image.jpg',
                                 countdown: 40,  //profile picture from pocketbase
                               ));//give value from database to 30 d',   
                             },

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_video_conference/zego_uikit_prebuilt_video_conference.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 class VideoCall extends StatefulWidget {
   final String conferenceID;
@@ -23,20 +24,41 @@ class VideoCall extends StatefulWidget {
 }
 
 class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
+  final pb = PocketBase('https://api.arcsaep.site/');
   bool isMuted = true; // Start muted
   bool hasUnmutePermission = false;
   bool isHandRaised = false;
   bool isLiked = false;
   int countdown = 0; // Countdown in seconds
   Timer? countdownTimer;
+  String? highlightedUserID; // Store the userID of the highlighted user
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this); // Observe app lifecycle changes
+    subscribeToUnmuteUpdates(); // Start Pocketbase real-time listener
+    ZegoUIKit().turnMicrophoneOn(false); // Ensure the microphone starts off
+  }
 
-    // Ensure the microphone starts off and state sync with isMuted
-    ZegoUIKit().turnMicrophoneOn(false);
+  // Real-time listener for unmute permission updates from Pocketbase
+  void subscribeToUnmuteUpdates() {
+    pb.collection('pranavUserPermissions').subscribe('*', (e) {
+      if (e.action == 'update' || e.action == 'create') {
+        final userID = e.record?.getStringValue('userID');
+        final hasPermission = e.record?.getBoolValue('hasUnmutePermission');
+
+        setState(() {
+          // Highlight the user who has the unmute permission
+          highlightedUserID = (hasPermission ?? false) ? userID : null;
+
+          // Sync the local user’s permission with the Pocketbase data
+          if (userID == widget.userID) {
+            hasUnmutePermission = hasPermission ?? false;
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -53,53 +75,54 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
   }
 
   void toggleMute() {
-    // Check if permission is granted to unmute
     if (!hasUnmutePermission && isMuted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("You don't have permission to unmute")),
       );
       return;
     }
-
-    // Toggle the mute status in SDK and update the state
     ZegoUIKit().turnMicrophoneOn(isMuted); // Sync with SDK
     setState(() {
       isMuted = !isMuted;
     });
-
-    print("Mute Toggled: $isMuted");
   }
 
   void toggleHandRaise() {
     setState(() {
       isHandRaised = !isHandRaised;
     });
-    print("Hand raise status: $isHandRaised");
   }
 
   void toggleLike() {
     setState(() {
       isLiked = !isLiked;
     });
-    print("Like status: $isLiked");
   }
 
-  void toggleUnmutePermission() {
-    setState(() {
-      hasUnmutePermission = !hasUnmutePermission;
-    });
+  // Update the unmute permission in Pocketbase
+void toggleUnmutePermission() async {
+  setState(() {
+    hasUnmutePermission = !hasUnmutePermission;
+  });
 
+  // Send the update to Pocketbase (creating/updating the UserPermissions record)
+  final data = <String, dynamic>{
+    'userID': widget.userID,
+    'hasUnmutePermission': hasUnmutePermission,
+    'timestamp': DateTime.now().toUtc().toIso8601String(),
+  };
+
+  // try {
+    // Use upsert to avoid failure if the record already exists
+    final record = await pb.collection('pranavUserPermissions').create(body: data );
+
+    // If permission is granted, start the countdown
     if (hasUnmutePermission) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("You have permission to unmute")),
-      );
-
-      countdown = widget.countdown;// set value of the counter from pocekbase or from passed on value
+      countdown = widget.countdown;
       countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         setState(() {
           countdown--;
         });
-
         if (countdown <= 0) {
           revokePermission();
           countdownTimer?.cancel();
@@ -109,30 +132,31 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
       revokePermission();
     }
 
-    print("Unmute permission: $hasUnmutePermission");
-  }
+    print('Unmute permission updated for user: ${widget.userID}');
+  // } catch (e) {
+  //   print('Error updating unmute permission: $e');
+  // }
+}
 
+
+  // Revoke unmute permission
   void revokePermission() {
     setState(() {
       hasUnmutePermission = false;
       countdown = 0;
-      isMuted = true; // Update the icon state to reflect muted status
+      isMuted = true;
     });
-
-    // Automatically mute the microphone
     ZegoUIKit().turnMicrophoneOn(false);
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Your permission has been revoked, mic muted")),
     );
-
-    print("Permission revoked, mic muted");
   }
 
   @override
   void dispose() {
     countdownTimer?.cancel();
-    WidgetsBinding.instance.removeObserver(this); // Stop observing lifecycle
+    pb.collection('UserPermissions').unsubscribe('*');
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -149,7 +173,6 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
               userName: widget.userName,
               conferenceID: widget.conferenceID,
               config: ZegoUIKitPrebuiltVideoConferenceConfig(
-                
                 turnOnMicrophoneWhenJoining: false,
                 bottomMenuBarConfig: ZegoBottomMenuBarConfig(
                   extendButtons: [
@@ -170,12 +193,14 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
                   ],
                 ),
               )..avatarBuilder = (BuildContext context, Size size, ZegoUIKitUser? user, Map extraInfo) {
+                  bool isHighlighted = user?.id == highlightedUserID;
                   return user != null
                       ? Container(
                           width: size.width,
                           height: size.height,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
+                            border: isHighlighted ? Border.all(color: Colors.yellow, width: 3) : null,
                             image: DecorationImage(
                               fit: BoxFit.cover,
                               image: NetworkImage(widget.profilePictureUrl),
@@ -221,7 +246,7 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            if (hasUnmutePermission && countdown > 0) // Show countdown
+            if (hasUnmutePermission && countdown > 0)
               Positioned(
                 bottom: 350,
                 left: 15,
