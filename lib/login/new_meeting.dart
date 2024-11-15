@@ -1,5 +1,4 @@
-import 'dart:ffi';
-
+import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:main_model/login/video_call.dart';
@@ -16,12 +15,28 @@ class NewMeeting extends StatefulWidget {
 class _NewMeetingState extends State<NewMeeting> {
   String _meetingCode = "abcdfgw";
   final _controller = TextEditingController();
+  final pb = PocketBase('https://api.arcsaep.site/');
 
   @override
   void initState() {
     var uuid = Uuid();
     _meetingCode = uuid.v1().substring(0, 8);
     super.initState();
+  }
+
+  Future<void> _createMeetingRecord() async {
+    final timeCounter = int.tryParse(_controller.text.trim()) ?? 30;
+    
+    try {
+      final data = <String, dynamic>{
+        "meetingCode": _meetingCode.trim(),
+        "timeCounter": timeCounter
+      };
+      await pb.collection('pranavsMeet').create(body: data);
+      print('Meeting record created successfully');
+    } catch (e) {
+      print('Error creating meeting record: $e');
+    }
   }
 
   @override
@@ -112,13 +127,14 @@ class _NewMeetingState extends State<NewMeeting> {
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 0, 0, 0),
               child: OutlinedButton.icon(
-                onPressed: () {
+                onPressed: () async {
+                  await _createMeetingRecord();  // Create the record in PocketBase
                   Get.to(VideoCall(
                     conferenceID: _meetingCode.trim(),
                     userID: const Uuid().v4(),         // Replace with the actual user ID
                     userName: 'Panama',          // user name from pocketbase
                     profilePictureUrl: 'https://www.example.com/profile_picture.jpg',
-                    countdown: int.tryParse(_controller.text.trim())?? 30 ));
+                    countdown: int.tryParse(_controller.text.trim()) ?? 30 ));
                 },
                 icon: const Icon(
                   Icons.video_call,
