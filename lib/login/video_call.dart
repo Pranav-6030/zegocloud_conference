@@ -13,7 +13,7 @@ class VideoCall extends StatefulWidget {
     Key? key,
     required this.conferenceID,
     required this.userID,
-    required this.userName,
+    required this.userName,// 
     this.profilePictureUrl = "https://www.mockofun.com/wp-content/uploads/2019/12/circle-image.jpg",
     required this.countdown,
   }) : super(key: key);
@@ -132,6 +132,20 @@ Widget build(BuildContext context) {
             conferenceID: widget.conferenceID,
             config: ZegoUIKitPrebuiltVideoConferenceConfig(
               turnOnMicrophoneWhenJoining: false,
+              avatarBuilder: (BuildContext context, Size size, ZegoUIKitUser? user, Map extraInfo) {
+          return user != null
+              ? Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: NetworkImage(
+                        widget.profilePictureUrl,
+                      ),
+                    ),
+                  ),
+                )
+              : const SizedBox();
+        },
               bottomMenuBarConfig: ZegoBottomMenuBarConfig(
                 extendButtons: [
                   FloatingActionButton(
