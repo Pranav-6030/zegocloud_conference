@@ -50,18 +50,19 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
     Navigator.of(context).pop();
   }
 
-  void toggleMute() {
-    if (hasUnmutePermission) {
-      ZegoUIKit().turnMicrophoneOn(!isMuted); // Sync with SDK
-      setState(() {
-        isMuted = !isMuted;
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("You have no permission to unmute.")),
-      );
-    }
+void toggleMute() {
+  if (hasUnmutePermission) {
+    setState(() {
+      isMuted = !isMuted;
+    });
+    ZegoUIKit().turnMicrophoneOn(!isMuted); // Sync with SDK
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("You have no permission to unmute.")),
+    );
   }
+}
+
 
 
   void toggleHandRaise() {
@@ -77,27 +78,30 @@ class _VideoCallState extends State<VideoCall> with WidgetsBindingObserver {
   }
 
   void toggleUnmutePermission() {
-    setState(() {
-      hasUnmutePermission = !hasUnmutePermission;
-      isMuted = !hasUnmutePermission; // Automatically mute when permission is removed
-      ZegoUIKit().turnMicrophoneOn(hasUnmutePermission); // Sync mic state with permission
-    });
+  setState(() {
+    hasUnmutePermission = !hasUnmutePermission;
 
-    if (hasUnmutePermission) {
-      countdown = widget.countdown;
-      countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        setState(() {
-          countdown--;
-        });
-        if (countdown <= 0) {
-          revokePermission();
-          countdownTimer?.cancel();
-        }
+    // Automatically update the mic state based on permission
+    isMuted = !hasUnmutePermission;
+    ZegoUIKit().turnMicrophoneOn(hasUnmutePermission);
+  });
+
+  if (hasUnmutePermission) {
+    countdown = widget.countdown;
+    countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        countdown--;
       });
-    } else {
-      revokePermission();
-    }
+      if (countdown <= 0) {
+        revokePermission();
+        countdownTimer?.cancel();
+      }
+    });
+  } else {
+    revokePermission();
   }
+}
+
 
   void revokePermission() {
     setState(() {
