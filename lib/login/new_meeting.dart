@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -76,6 +77,8 @@ class _NewMeetingState extends State<NewMeeting> {
                 color: Colors.grey[350],
                 child: TextField(
                   controller: _controller,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   textAlign: TextAlign.center,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -84,6 +87,7 @@ class _NewMeetingState extends State<NewMeeting> {
                 ),
               ),
             ),
+
             Padding(
               padding: const EdgeInsets.fromLTRB(15, 10, 15, 0),
               child: Card(
@@ -131,9 +135,9 @@ class _NewMeetingState extends State<NewMeeting> {
                   await _createMeetingRecord();  // Create the record in PocketBase
                   Get.to(VideoCall(
                     conferenceID: _meetingCode.trim(),
-                    userID: const Uuid().v4(),         // Replace with the actual user ID
+                    userID: const Uuid().v4(),         // if u want you can replace it
                     userName: 'Panama',          // user name from pocketbase
-                    profilePictureUrl: 'https://www.example.com/profile_picture.jpg',
+                    profilePictureUrl: 'https://www.example.com/profile_picture.jpg', // profile pic from pocketbase
                     countdown: int.tryParse(_controller.text.trim()) ?? 30 ));
                 },
                 icon: const Icon(
