@@ -185,12 +185,12 @@ void revokePermission() async {
                 turnOnMicrophoneWhenJoining: false,
                 avatarBuilder: (BuildContext context, Size size, ZegoUIKitUser? user, Map extraInfo) {
                   return user != null
-                      ? Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            image: DecorationImage(
-                              image: NetworkImage(widget.profilePictureUrl),
-                            ),
+                      ? ClipOval(
+                          child: Image.network(
+                            widget.profilePictureUrl,
+                            fit: BoxFit.cover,
+                            width: size.width, // Match the avatar size
+                            height: size.height,
                           ),
                         )
                       : const SizedBox();
